@@ -1,0 +1,109 @@
+.carousel-container {
+    height: 600px;
+    overflow-y: auto;
+    background-color: #f5f7fa;
+    border-radius: 8px;
+    position: relative;
+    scroll-behavior: smooth;
+}
+
+.day-item {
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    transition: all 0.3s ease;
+    margin: 10px;
+    border-radius: 8px;
+    background-color: #6c8ab1;
+    color: white;
+    cursor: pointer;
+}
+
+.day-item.highlighted {
+    height: 150px;
+    background-color: transparent;
+    color: inherit;
+    margin: 20px 10px;
+    cursor: default;
+}
+
+.day-item.nearby {
+    opacity: 0.8;
+}
+
+.day-item.distant {
+    opacity: 0.5;
+}
+
+.day-item.hidden {
+    opacity: 0.2;
+}
+
+.day-number {
+    font-weight: 500;
+}
+
+.payment-card {
+    width: 100%;
+    height: 100%;
+    background-color: #002147;
+    color: white;
+    border-radius: 8px;
+    padding: 16px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    display: flex;
+    flex-direction: column;
+    position: relative;
+}
+
+.payment-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.payment-icon {
+    margin-right: 8px;
+    font-size: 20px;
+}
+
+.payment-title {
+    font-size: 18px;
+    font-weight: 500;
+}
+
+.payment-content {
+    display: flex;
+    justify-content: space-between;
+    flex: 1;
+}
+
+.payment-left {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+}
+
+.payment-right {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    text-align: right;
+}
+
+.label {
+    font-size: 14px;
+    opacity: 0.9;
+    margin-bottom: 4px;
+}
+
+.amount-saved {
+    font-size: 14px;
+}
+
+.positive-amount {
+    color: white;
+    font-weight: bold;
+}

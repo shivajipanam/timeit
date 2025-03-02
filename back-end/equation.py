@@ -1,99 +1,199 @@
+from flask import Flask, jsonify, request
 import numpy as np
+from flask_cors import CORS
+import requests
 from datetime import datetime, timedelta
 
-# Define User Data Class
-class User:
-    def __init__(self, salary, salary_date, accounts, bills):
-        self.salary = salary  # Monthly salary amount
-        self.salary_date = salary_date  # Date salary is received (e.g., 16th)
-        self.accounts = accounts  # List of accounts (savings, checking, etc.)
-        self.bills = bills  # List of fixed-cost bills
+app = Flask(__name__)
+CORS(app)  # Enable CORS
 
-# Define Account Class
-class Account:
-    def __init__(self, balance, interest_rate, overdraft_fee, min_balance=0):
-        self.balance = balance  # Current account balance
-        self.interest_rate = interest_rate / 365  # Convert annual to daily rate
-        self.overdraft_fee = overdraft_fee  # Fee if overdraft occurs
-        self.min_balance = min_balance  # Minimum required balance
 
-# Define Bill Class
-class Bill:
-    def __init__(self, name, amount, due_date, late_fee=0, interest_rate=0, flexibility=0):
-        self.name = name  # Bill name (e.g., rent, credit card)
-        self.amount = amount  # Fixed bill amount
-        self.due_date = due_date  # Day of the month it's due
-        self.late_fee = late_fee  # Late payment fee (if any)
-        self.interest_rate = interest_rate / 365  # Convert annual to daily rate
-        self.flexibility = flexibility  # Days bill can be shifted
+API_BASE_URL = "http://api.nessieisreal.com"
+API_KEY = "6cd820999961ca9408b6905214592126"
+OVERDRAFT_FEE = 35  # Assume a standard overdraft fee
+INTEREST_RATE = 0.02 / 365  # Assume 2% annual interest rate, converted to daily
+LATE_FEE = 25  # Assume a standard late fee for missing bill payments
 
-# Simulate Daily Cash Flow to Compute Interest
+def fetch_user_data(customer_id):
+    response = requests.get(f"{API_BASE_URL}/customers/{customer_id}?key={API_KEY}")
+    return response.json()
+  
+def fetch_accounts(customer_id):
+    response = requests.get(f"{API_BASE_URL}/customers/{customer_id}/accounts?key={API_KEY}")
+    return response.json()
 
-def simulate_cash_flow(user, days=30):
-    daily_balance = np.zeros(days)
+def fetch_recent_salaries(customer_id):
+    """Fetch only the past 4 months of salary deposits."""
+    four_months_ago = (datetime.today() - timedelta(days=120)).strftime("%Y-%m-%d")
+    response = requests.get(f"{API_BASE_URL}/accounts/{customer_id}/deposits?key={API_KEY}")
+    deposits = response.json()
+    # print(deposits)
     
-    # Initialize balance with the sum of all accounts
-    total_balance = sum(acc.balance for acc in user.accounts)
-    salary_day = user.salary_date - 1  # Convert to zero-based index
+    income_deposits = [dep for dep in deposits if dep["description"] == "income" and dep["transaction_date"] >= four_months_ago]
+    if not income_deposits:
+        return 0, []
     
+    salary_dates = sorted(set(int(dep["transaction_date"].split("-")[2]) for dep in income_deposits))
+    avg_salary = sum(dep["amount"] for dep in income_deposits) / len(income_deposits)
+    return avg_salary, salary_dates
+
+def fetch_recent_bills(customer_id):
+    """Fetch bills from all accounts in the past 4 months."""
+    accounts = fetch_accounts(customer_id)
+    four_months_ago = (datetime.today() - timedelta(days=120)).date()  # Ensure it's a date object
+    all_bills = []
+
+    for account in accounts:
+        response = requests.get(f"{API_BASE_URL}/accounts/{account['_id']}/purchases?key={API_KEY}")
+        purchases = response.json()
+
+        print("Four months ago:", four_months_ago)
+
+        # Correct filtering of recent bills
+        recent_bills = [bill for bill in purchases if datetime.strptime(bill["purchase_date"], "%Y-%m-%d").date() >= four_months_ago]
+
+        # Debugging prints
+        for bill in purchases:
+            bill_date = datetime.strptime(bill["purchase_date"], "%Y-%m-%d").date()
+            print(f"Recent Bill Date: {bill_date}")
+
+        print("Recent bills:", recent_bills, "\n")
+
+        all_bills.extend(recent_bills)  # Append filtered bills to all_bills
+
+    return all_bills
+    
+# Iterative Dynamic Programming Approach to Optimize Bill Payments
+
+def dp_optimize_bill_payments(accounts, salary, salary_dates, bills, days=30):
+    """Uses iterative DP to optimize savings while ensuring overdraft fees are charged daily."""
+    MAX_BALANCE = 10000  # Define the discretized balance range
+    OVERDRAFT_FEE = 35
+    INTEREST_RATE = 0.0001  # Assume small daily interest
+    LATE_FEE = 25
+
+    dp = np.full((days + 1, MAX_BALANCE * 2), -float('inf'))  # DP table: maximize savings
+    initial_balance = int(round(sum(acc["balance"] for acc in accounts)))
+    initial_index = MAX_BALANCE + initial_balance  # Shift index to allow negative balances
+
+    dp[0][initial_index] = 0  # Start with zero additional savings
+    decision_table = {}  # Store best decisions
+    savings_table = {}  # Track savings
+
     for day in range(days):
-        # Add salary on the designated day
-        if day == salary_day:
-            total_balance += user.salary
-        
-        # Deduct bills due that day
-        for bill in user.bills:
-            if bill.due_date - 1 == day:  # Convert to zero-based index
-                total_balance -= bill.amount
-                
-        # Store daily balance
-        daily_balance[day] = total_balance
-    
-    # Compute interest earned per day (only positive balances earn interest)
-    total_interest = sum(
-        max(0, daily_balance[day]) * user.accounts[0].interest_rate for day in range(days)
-    )
-    
-    return daily_balance, total_interest
-
-# Optimize Bill Payment Dates
-
-def optimize_bill_dates(user):
-    best_schedule = {}
-    max_savings = 0
-    original_interest = simulate_cash_flow(user)[1]
-    
-    # Try shifting each bill within its flexibility range
-    for bill in user.bills:
-        best_date = bill.due_date
-        for shift in range(-bill.flexibility, bill.flexibility + 1):
-            temp_user = User(user.salary, user.salary_date, user.accounts, user.bills.copy())
-            temp_user.bills[temp_user.bills.index(bill)].due_date += shift
-            new_interest = simulate_cash_flow(temp_user)[1]
-            savings = new_interest - original_interest
+        for balance_index in range(2 * MAX_BALANCE):
+            if dp[day][balance_index] == -float('inf'):
+                continue
             
-            if savings > max_savings:
-                max_savings = savings
-                best_date = bill.due_date + shift
-                
-        best_schedule[bill.name] = best_date
-    
-    return best_schedule, max_savings
+            balance = balance_index - MAX_BALANCE  # Convert index back to actual balance
+            current_savings = dp[day][balance_index]  # Current max savings
+            
+            # Carry balance forward with interest applied
+            new_balance = balance + (balance * INTEREST_RATE)
+            new_index = int(round(new_balance)) + MAX_BALANCE
+            if 0 <= new_index < 2 * MAX_BALANCE:
+                if current_savings > dp[day + 1][new_index]:
+                    dp[day + 1][new_index] = current_savings
+                    decision_table[(day + 1, new_index)] = "No payment made today."
+                    savings_table[(day + 1, new_index)] = current_savings
 
-# Example Usage
+            # Apply overdraft fee if the balance is negative
+            if balance < 0:
+                overdrafted_balance = balance - OVERDRAFT_FEE
+                overdrafted_index = int(round(overdrafted_balance)) + MAX_BALANCE
+                if 0 <= overdrafted_index < 2 * MAX_BALANCE:
+                    new_savings = current_savings - OVERDRAFT_FEE
+                    if new_savings > dp[day + 1][overdrafted_index]:
+                        dp[day + 1][overdrafted_index] = new_savings
+                        decision_table[(day + 1, overdrafted_index)] = "Overdraft fee applied."
+                        savings_table[(day + 1, overdrafted_index)] = new_savings
+
+            # Process salary deposits
+            if day + 1 in [d - 1 for d in salary_dates]:
+                deposit_balance = balance + salary
+                deposit_index = int(round(deposit_balance)) + MAX_BALANCE
+                if 0 <= deposit_index < 2 * MAX_BALANCE:
+                    if current_savings > dp[day + 1][deposit_index]:
+                        dp[day + 1][deposit_index] = current_savings
+                        decision_table[(day + 1, deposit_index)] = "Salary deposited."
+                        savings_table[(day + 1, deposit_index)] = current_savings
+
+            # Process bill payments
+            for bill in bills:
+                bill_day = int(bill["purchase_date"].split("-")[2]) - 1
+                if bill_day == day:
+                    new_balance = balance - bill["amount"]
+                    new_index = int(round(new_balance)) + MAX_BALANCE
+                    if 0 <= new_index < 2 * MAX_BALANCE:
+                        if current_savings > dp[day + 1][new_index]:
+                            dp[day + 1][new_index] = current_savings
+                            decision_table[(day + 1, new_index)] = f"Paid {bill['description']} on time."
+                            savings_table[(day + 1, new_index)] = current_savings
+                    else:
+                        # Consider delaying payment (incurs a late fee)
+                        late_balance = balance - LATE_FEE
+                        late_index = int(round(late_balance)) + MAX_BALANCE
+                        if 0 <= late_index < 2 * MAX_BALANCE:
+                            new_savings = current_savings - LATE_FEE
+                            if new_savings > dp[day + 4][late_index]:
+                                dp[day + 4][late_index] = new_savings
+                                decision_table[(day + 4, late_index)] = f"Delayed {bill['description']} by 3 days."
+                                savings_table[(day + 4, late_index)] = new_savings
+    
+    # Extract the optimal schedule
+    best_schedule = {}
+    explanation = {}
+    daily_savings = {}
+
+    best_balance_index = max(range(2 * MAX_BALANCE), key=lambda x: dp[days][x])
+    
+    for day in range(days, 0, -1):
+        if (day, best_balance_index) in decision_table:
+            explanation[day] = decision_table[(day, best_balance_index)]
+        best_schedule[day] = best_balance_index - MAX_BALANCE  # Convert index back to balance
+        daily_savings[day] = savings_table.get((day, best_balance_index), 0)  # Fetch savings
+
+    return best_schedule, daily_savings, explanation
+
+
+@app.route('/optimize', methods=['GET'])
+def optimize():
+    # customer_id = request.args.get('customer_id')
+    customer_id = "67c3fb219683f20dd518cf28"
+    accounts = fetch_accounts(customer_id)
+    salary, salary_dates = fetch_recent_salaries(accounts[0]['_id'])  # Use the first account's ID for salary
+    bills = fetch_recent_bills(customer_id)
+    
+    optimized_schedule, daily_savings, explanation = dp_optimize_bill_payments(accounts, salary, salary_dates, bills)
+    
+    # Format the response for the frontend
+    response = {
+        'optimized_schedule': optimized_schedule,
+        'daily_savings': daily_savings,
+        'explanation': explanation,
+        'total_savings': sum(daily_savings.values())
+    }
+    
+    return jsonify(response)
+
 if __name__ == "__main__":
-    accounts = [Account(balance=5000, interest_rate=0.02, overdraft_fee=35)]
-    bills = [
-        Bill("Rent", 1200, 13, flexibility=3),
-        Bill("Credit Card", 300, 20, flexibility=5),
-        Bill("Loan", 500, 5, flexibility=2)
-    ]
+    app.run(debug=True, host="0.0.0.0", port=5000)
+    # app.run(debug=True)
+if __name__ == "__main__":
+    app.run(debug=True, host="0.0.0.0", port=5000)
+    # customer_id = "67c3fb219683f20dd518cf28"
+    # accounts = fetch_accounts(customer_id)
+    # print("HIHIHIHIHI")
+    # print(accounts[0])
     
-    user = User(salary=4000, salary_date=16, accounts=accounts, bills=bills)
-    optimized_schedule, savings = optimize_bill_dates(user)
+    # salary, salary_dates = fetch_recent_salaries(accounts[0]['_id'])
+    # bills = fetch_recent_bills(customer_id)
     
-    print("Optimized Payment Schedule:")
-    for bill, date in optimized_schedule.items():
-        print(f"{bill}: Pay on {date}th")
+    # optimized_schedule, daily_savings, explanation = dp_optimize_bill_payments(accounts, salary, salary_dates, bills)
     
-    print(f"Total Additional Savings: ${savings:.2f}")
+    # print("Optimized Payment Schedule:")
+    # for day, balance in optimized_schedule.items():
+    #     print(f"Day {day}: Balance = ${balance:.2f}, Daily Saving: ${daily_savings.get(day, 0):.2f}, Reason: {explanation.get(day, 'No reason available')}")
+    
+    # total_savings = sum(daily_savings.values())
+    # print(f"Total Additional Savings: ${total_savings:.2f}")

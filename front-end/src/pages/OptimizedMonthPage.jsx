@@ -3,6 +3,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { FaBars, FaTruck, FaPhone, FaCalendarAlt, FaCreditCard, FaDesktop } from 'react-icons/fa';
+import Carousel from './Carousel';
 
 const Container = styled.div`
   max-width: 450px;
@@ -165,6 +166,7 @@ const Progress = styled.div`
 
 const OptimizedMonthPage = () => {
   const navigate = useNavigate();
+  const customerId = "67c3fb219683f20dd518cf28"; // Replace with dynamic customer ID if needed
 
   return (
     <Container>
@@ -206,40 +208,7 @@ const OptimizedMonthPage = () => {
         </TimelineDate>
       </Timeline>
 
-      <PaymentsContainer>
-        <VerticalLine />
-
-        <PaymentBar intensity="light" width="50%" />
-
-        <PaymentBar intensity="medium" width="80%" />
-
-        <PaymentCard>
-          <PaymentHeader>
-            <PaymentIcon>
-              <FaTruck />
-            </PaymentIcon>
-            <PaymentName>Car Payment:</PaymentName>
-          </PaymentHeader>
-          <PaymentDetails>
-            <div>
-              <PaymentLabel>Due Date</PaymentLabel>
-              <PaymentLabel>Last Paid:</PaymentLabel>
-            </div>
-            <SavedAmount>
-              Amount Saved:
-              <br />+ 1.50
-            </SavedAmount>
-          </PaymentDetails>
-        </PaymentCard>
-
-        <PaymentBar intensity="medium" width="70%" />
-
-        <PaymentBar intensity="light" width="40%" />
-
-        <ProgressBar>
-          <Progress progress="30%" />
-        </ProgressBar>
-      </PaymentsContainer>
+      <Carousel customerId={customerId} />
     </Container>
   );
 };
