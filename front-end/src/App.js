@@ -1,14 +1,17 @@
-// src/App.js
+// src/App.jsx
 import React from 'react';
-import Dashboard from './components/Dashboard';
-import './assets/Dashboard.css';
+import { ThemeProvider } from 'styled-components';
+import { theme } from './styles/theme';
+import AppRoutes from './routes';
+import GlobalStyles from './styles/GlobalStyles';
 
-function App() {
+const App = () => {
   return (
-    <div className="App">
-      <Dashboard />
-    </div>
+    <ThemeProvider theme={theme}>
+      <GlobalStyles />
+      <AppRoutes />
+    </ThemeProvider>
   );
-}
+};
 
 export default App;
