@@ -8,98 +8,98 @@ app = Flask(__name__)
 CORS(app)  # Enable CORS
 
 # Get API key from environment variable or use a default for development
-API_KEY = os.environ.get('NESSIE_API_KEY', '7f3e82543d50fe53dc8c7a875dadc05f')
+API_KEY = os.environ.get('NESSIE_API_KEY', '6cd820999961ca9408b6905214592126')
 BASE_URL = 'http://api.nessieisreal.com'
 
 
-# Mock data for development
-MOCK_ATMS = {
-    "data": [
-        {
-            "_id": "atm1",
-            "name": "Capital One ATM - Downtown",
-            "address": {
-                "street_number": "123",
-                "street_name": "Main St",
-                "city": "Chicago",
-                "state": "IL"
-            },
-            "accessibility": "24/7 Access",
-            "amount_left": 5000.00
-        },
-        {
-            "_id": "atm2",
-            "name": "Capital One ATM - University",
-            "address": {
-                "street_number": "456",
-                "street_name": "Campus Dr",
-                "city": "Urbana",
-                "state": "IL"
-            },
-            "accessibility": "Lobby Hours Only",
-            "amount_left": 12500.00
-        }
-    ]
-}
+# # Mock data for development
+# MOCK_ATMS = {
+#     "data": [
+#         {
+#             "_id": "atm1",
+#             "name": "Capital One ATM - Downtown",
+#             "address": {
+#                 "street_number": "123",
+#                 "street_name": "Main St",
+#                 "city": "Chicago",
+#                 "state": "IL"
+#             },
+#             "accessibility": "24/7 Access",
+#             "amount_left": 5000.00
+#         },
+#         {
+#             "_id": "atm2",
+#             "name": "Capital One ATM - University",
+#             "address": {
+#                 "street_number": "456",
+#                 "street_name": "Campus Dr",
+#                 "city": "Urbana",
+#                 "state": "IL"
+#             },
+#             "accessibility": "Lobby Hours Only",
+#             "amount_left": 12500.00
+#         }
+#     ]
+# }
 
-MOCK_CUSTOMERS = {
-    "data": [
-        {
-            "_id": "cust1",
-            "first_name": "John",
-            "last_name": "Doe",
-            "address": {
-                "street_number": "100",
-                "street_name": "Market St",
-                "city": "Chicago",
-                "state": "IL"
-            }
-        },
-        {
-            "_id": "cust2",
-            "first_name": "Jane",
-            "last_name": "Smith",
-            "address": {
-                "street_number": "200",
-                "street_name": "State St",
-                "city": "Champaign",
-                "state": "IL"
-            }
-        }
-    ]
-}
+# MOCK_CUSTOMERS = {
+#     "data": [
+#         {
+#             "_id": "cust1",
+#             "first_name": "John",
+#             "last_name": "Doe",
+#             "address": {
+#                 "street_number": "100",
+#                 "street_name": "Market St",
+#                 "city": "Chicago",
+#                 "state": "IL"
+#             }
+#         },
+#         {
+#             "_id": "cust2",
+#             "first_name": "Jane",
+#             "last_name": "Smith",
+#             "address": {
+#                 "street_number": "200",
+#                 "street_name": "State St",
+#                 "city": "Champaign",
+#                 "state": "IL"
+#             }
+#         }
+#     ]
+# }
 
-MOCK_ACCOUNTS = {
-    "cust1": {
-        "data": [
-            {
-                "_id": "acc1",
-                "type": "Checking",
-                "nickname": "Primary Checking",
-                "balance": 5432.10,
-                "rewards": 0
-            },
-            {
-                "_id": "acc2",
-                "type": "Savings",
-                "nickname": "Emergency Fund",
-                "balance": 12345.67,
-                "rewards": 0
-            }
-        ]
-    },
-    "cust2": {
-        "data": [
-            {
-                "_id": "acc3",
-                "type": "Credit Card",
-                "nickname": "Rewards Card",
-                "balance": 1250.00,
-                "rewards": 5000
-            }
-        ]
-    }
-}
+# MOCK_ACCOUNTS = {
+#     "cust1": {
+#         "data": [
+#             {
+#                 "_id": "acc1",
+#                 "type": "Checking",
+#                 "nickname": "Primary Checking",
+#                 "balance": 5432.10,
+#                 "rewards": 0
+#             },
+#             {
+#                 "_id": "acc2",
+#                 "type": "Savings",
+#                 "nickname": "Emergency Fund",
+#                 "balance": 12345.67,
+#                 "rewards": 0
+#             }
+#         ]
+#     },
+#     "cust2": {
+#         "data": [
+#             {
+#                 "_id": "acc3",
+#                 "type": "Credit Card",
+#                 "nickname": "Rewards Card",
+#                 "balance": 1250.00,
+#                 "rewards": 5000
+#             }
+#         ]
+#     }
+# }
 
 @app.route('/api/atms', methods=['GET'])
 def get_atms():
@@ -123,7 +123,9 @@ def get_branches():
 def get_customers():
     """Get all customers"""
     response = requests.get(f'{BASE_URL}/customers?key={API_KEY}')
-    return jsonify(response.json())
+    print("HIHIHIHIHIHIHIHI")
+    print(jsonify(response.json))
+    return (jsonify(response.json()))
 
     """Get mock customers"""
     # return jsonify(MOCK_CUSTOMERS)
